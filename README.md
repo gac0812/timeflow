@@ -48,7 +48,7 @@ bash scripts/check-all.sh frontend   # 仅前端
 hooks 不预置在仓库中。git 仓库就绪后，在 Cursor 里对 AI 说「启用 git hooks」，AI 会按
 `.cursor/skills/timeflow-git-hooks/SKILL.md` 中的模板把三个 hook 写入 `.git/hooks/` 并验证：
 
-- `pre-commit`：按改动范围跑对应端检查，不过不让提交
+- `pre-commit`：按改动范围运行对应端检查；检查不通过时阻止提交
 - `commit-msg`：强制 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0/) 的 `type(scope): 描述` 格式（feat/fix/docs/style/refactor/perf/test/build/ci/chore/revert）
 - `pre-push`：全量检查通过才允许推送
 
