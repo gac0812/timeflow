@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.db
+*.sqlite
+*.sqlite3
+
+# Node / Expo / React Native
+node_modules/
+.expo/
+dist/
+build/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+*.tsbuildinfo
+ios/
+android/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and operating-system files
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
