@@ -25,40 +25,49 @@ bash scripts/check-all.sh frontend
 bash scripts/check-all.sh
 ```
 
-门禁内容：后端 `ruff check` + `ruff format --check` + `mypy`（strict）+ `pytest`；前端 `eslint` + `prettier --check` + `tsc --noEmit`。
+门禁内容：后端 `ruff check` + `ruff format --check` + `mypy`（strict）+ `pytest` + `alembic history`；若本机 PostgreSQL 可达则再跑 `alembic upgrade head` + `alembic check`（CI 始终跑这两项）；前端 `eslint` + `prettier --check` + `tsc --noEmit` + `npm audit --audit-level=moderate`。
 任何一项失败都必须修复后重跑，直到全绿。禁止用 `# noqa`、`# type: ignore`、`eslint-disable` 掩盖问题（确有必要时必须写明原因并在回复中向用户说明）。
 
 ## 后端架构（强制分层）
 
-新功能只能落在 `backend/src/timeapp/modules/<领域>/` 下，禁止写进 `api/`、`core/` 或 `main.py`：
+后端按 Agent 边界组织，禁止把业务写进 `api/`、`core/` 或 `main.py`：
 
 ```text
-modules/<领域>/
-├── __init__.py
-├── router.py      # 只做 HTTP 编排：解析请求、调 service、返回响应
-├── schemas.py     # Pydantic 请求/响应模型
-├── service.py     # 业务逻辑，禁止出现 FastAPI 对象（Request/Depends 等）
-└── models.py      # SQLAlchemy ORM 模型（需要持久化时）
+src/timeapp/
+├── agents/                 # 主 Agent 与专项 Agent
+│   ├── main_agent/         # 唯一 Agent HTTP 入口：router / schemas / dispatcher
+│   └── <special>_agent/    # 内部能力包：schemas / service / prompts（禁止 router.py）
+├── basic/                  # 非 Agent 产品边界（手动业务、事项展示、OCR/ASR 等）
+│   └── <domain>/           # router / schemas / service / models（按需）
+├── common/                 # 跨 Agent 契约与共享能力
+│   ├── contracts/          # 统一响应等契约
+│   ├── data/               # 公共事实数据读写（专项 Agent 禁止直接调用）
+│   ├── confirmation/ / questioning/ / llm/ / task_profile/ / context/
+├── api/                    # 路由聚合、health、dependencies
+└── core/                   # Settings、DB engine / session / Base
 ```
 
-- 新领域模块必须在 `api/router.py` 中注册：`api_router.include_router(<模块>.router)`
-- 横切能力（认证、DB 会话）统一放 `api/dependencies.py`，模块内禁止自建
+- 只有 `main_agent` 暴露 Agent HTTP 入口；专项 Agent 是进程内能力包，不直接读写数据库、不追问、不执行 `db_action`
+- 对外 HTTP 路由（main_agent / basic）必须在 `api/router.py` 中注册：`api_router.include_router(...)`
+- 横切能力（认证、DB 会话）统一放 `api/dependencies.py`，业务包内禁止自建
 - 配置只能通过 `core/config.py` 的 `Settings` 读取，禁止在业务代码里直接 `os.environ`
-- 模块之间只允许调用对方的 `service` 层函数，禁止跨模块 import `router` / `models`
+- `basic/<domain>/` 内部分层：`router` 只做 HTTP 编排，`service` 禁止出现 FastAPI 对象；包之间只允许调用对方 `service`，禁止跨包 import `router` / `models`
+- ORM 模型放 `basic/<domain>/models.py` 或经 `common/data/` 统一出口；专项 Agent 目录禁止出现 `models.py` 与数据库导入
 
 ## API 设计
 
-- 路径用 kebab-case（`/goal-planning`），与现有模块前缀保持一致；资源用复数名词，禁止动词路径（`POST /todos`，不是 `/create-todo`）
+- 路径用 kebab-case（`/main-agent`、`/unified-items`），与现有前缀保持一致；资源用复数名词，禁止动词路径（`POST /todos`，不是 `/create-todo`）
 - 请求/响应必须定义 Pydantic 模型并声明 `response_model`，禁止返回裸 dict
 - 状态码：创建 201、删除 204、404/409 等错误用 `HTTPException` 抛出，`detail` 用英文
 - 分页列表统一 query 参数 `limit`（默认 20，上限 100）+ `offset`
 
 ## 数据库
 
-- ORM 模型放各模块 `models.py`，公共 `Base`、engine、session 放 `core/db.py`（首次建库时创建）
+- 公共 `Base`、engine、session 放 `core/db.py`；迁移脚本放 `backend/alembic/versions/`
 - 表名 snake_case 复数（`todos`、`goal_plans`）；所有表必须有 `id`、`created_at`、`updated_at`
-- 任何模型变更必须生成 Alembic 迁移，禁止手改历史迁移、禁止 `Base.metadata.create_all` 用于生产路径
-- 查询写在 service 层，禁止在 router 里直接操作 session
+- 任何模型变更必须生成 Alembic 迁移（`cd backend && uv run alembic revision --autogenerate -m "..."`），禁止手改历史迁移、禁止 `Base.metadata.create_all` 用于生产路径
+- 应用迁移：`cd backend && uv run alembic upgrade head`
+- 查询写在 service / `common/data` 层，禁止在 router 里直接操作 session
 
 ## 前端结构（Expo RN）
 

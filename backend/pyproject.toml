@@ -33,6 +33,7 @@ testpaths = ["tests"]
 target-version = "py311"
 line-length = 100
 src = ["src", "tests"]
+extend-exclude = ["alembic.ini", "alembic/script.py.mako"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "N", "UP", "B", "S", "C4", "SIM", "T20", "RUF"]
