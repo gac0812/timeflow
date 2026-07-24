@@ -25,8 +25,10 @@ bash scripts/check-all.sh frontend
 bash scripts/check-all.sh
 ```
 
-门禁内容：后端 `ruff check` + `ruff format --check` + `mypy`（strict）+ `pytest` + `alembic history`；若本机 PostgreSQL 可达则再跑 `alembic upgrade head` + `alembic check`；前端 `eslint` + `prettier --check` + `tsc --noEmit` + `npm audit --audit-level=moderate`。
+门禁内容：后端 `ruff check` + `ruff format --check` + `mypy`（strict）+ `pytest` + `alembic history`；显式设置 `TIMEAPP_CHECK_DATABASE_URL` 后，再对该检查数据库执行 `alembic upgrade head` + `alembic check`；前端 `eslint` + `prettier --check` + `tsc --noEmit` + `npm audit --audit-level=moderate`。
 任何一项失败都必须修复后重跑，直到全绿。禁止用 `# noqa`、`# type: ignore`、`eslint-disable` 掩盖问题（确有必要时必须写明原因并在回复中向用户说明）。
+
+迁移检查禁止使用应用的 `TIMEAPP_DATABASE_URL`，只能显式提供数据库名以 `_test` 或 `_check` 结尾的 `TIMEAPP_CHECK_DATABASE_URL`。该数据库必须是可随时重建的本地或测试数据库；一旦提供，配置、连接和迁移错误都必须使门禁失败。未提供时必须明确报告迁移检查未运行。
 
 ## 后端架构（强制分层）
 

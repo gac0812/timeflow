@@ -26,16 +26,26 @@ chmod +x .git/hooks/pre-commit .git/hooks/commit-msg .git/hooks/pre-push
 
 ```bash
 #!/usr/bin/env bash
-# 提交前拦截：只检查本次提交涉及的端，检查不通过则禁止提交。
+# 提交前拦截：在暂存区快照中检查本次提交涉及的端，检查不通过则禁止提交。
 set -uo pipefail
 
-ROOT="$(git rev-parse --show-toplevel)"
 STAGED="$(git diff --cached --name-only --diff-filter=ACMRD)"
 
 [[ -z "$STAGED" ]] && exit 0
 
+CHECKOUT="$(mktemp -d)" || {
+  echo "[pre-commit] 无法创建暂存区检查目录。"
+  exit 1
+}
+trap 'rm -rf "$CHECKOUT"' EXIT HUP INT TERM
+
+git checkout-index --all --force --prefix="$CHECKOUT/" || {
+  echo "[pre-commit] 无法导出暂存区快照。"
+  exit 1
+}
+
 if echo "$STAGED" | grep -q '^backend/'; then
-  "$ROOT/scripts/check-all.sh" backend || {
+  "$CHECKOUT/scripts/check-all.sh" backend || {
     echo ""
     echo "[pre-commit] 后端检查未通过，提交已被拦截。"
     exit 1
@@ -43,7 +53,7 @@ if echo "$STAGED" | grep -q '^backend/'; then
 fi
 
 if echo "$STAGED" | grep -q '^frontend/'; then
-  "$ROOT/scripts/check-all.sh" frontend || {
+  "$CHECKOUT/scripts/check-all.sh" frontend || {
     echo ""
     echo "[pre-commit] 前端检查未通过，提交已被拦截。"
     exit 1

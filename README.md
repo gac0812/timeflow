@@ -112,6 +112,8 @@ bash scripts/check-all.sh backend    # 仅后端
 bash scripts/check-all.sh frontend   # 仅前端
 ```
 
+数据库迁移验证只在显式设置 `TIMEAPP_CHECK_DATABASE_URL` 时执行，并且数据库名必须以 `_test` 或 `_check` 结尾。脚本不会对应用使用的 `TIMEAPP_DATABASE_URL` 执行迁移；一旦提供检查数据库地址，配置、连接或迁移错误都会使门禁失败。
+
 开发规范与硬性约束见 [docs/skills/dev-standards/SKILL.md](docs/skills/dev-standards/SKILL.md)。提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0/)。
 
 ---
